@@ -2,8 +2,7 @@
 
 Asistente de voz de escritorio con interfaz tipo HUD, escrito en Python y HTML.
 
-**[Ver la demostración](https://TU-USUARIO.github.io/jarvis/)** ← cambia esta
-dirección por la tuya cuando publiques el repositorio.
+**[Ver la demostración](https://iker-code1.github.io/JARVIS/)**
 
 ---
 
