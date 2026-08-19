@@ -1,0 +1,6 @@
+﻿# Nada de secretos ni archivos del equipo en este repositorio.
+secretos/
+config.txt
+*.bak
+memoria.json
+notas.json

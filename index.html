@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+<meta name="description" content="Asistente de voz de escritorio con interfaz tipo HUD. Demostración.">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#030B18;--panel2:rgba(8,22,42,.85);--linea:#13405F;--linea2:#0D2A42;
+  --cian:#4FC3F7;--cian2:#9BDFFF;--texto:#CFE6F5;--tenue:#5F8CAB;
+  --ambar:#E8A33D;--rojo:#D9603F;--verde:#4FC79E;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--fondo);color:var(--texto);font-family:Inter,system-ui,sans-serif;
+  overflow-x:hidden}
+a{color:var(--cian);text-decoration:none;border-bottom:1px solid var(--linea)}
+a:hover{color:var(--cian2)}
+
+/* ── escenario del núcleo ─────────────────────────────────── */
+#escena{position:relative;height:min(78vh,680px);display:flex;
+  align-items:center;justify-content:center;overflow:hidden}
+#cajaLienzo{position:relative;width:min(78vw,620px);height:min(78vw,620px)}
+#lienzo{position:absolute;inset:0;width:100%;height:100%}
+#marcaTop{position:absolute;top:20px;left:0;right:0;text-align:center;
+  font-family:'IBM Plex Mono',monospace;pointer-events:none}
+#marcaTop .n{font-size:clamp(15px,3.4vw,22px);letter-spacing:.52em;color:var(--cian2);
+  text-shadow:0 0 22px rgba(79,195,247,.45)}
+#marcaTop .s{font-size:9.5px;letter-spacing:.34em;color:var(--tenue);margin-top:7px}
+#estado{position:absolute;bottom:16px;left:0;right:0;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.26em;
+  color:var(--tenue);pointer-events:none}
+#estado.vivo{color:var(--cian2);text-shadow:0 0 14px rgba(79,195,247,.5)}
+.aviso-demo{position:absolute;top:14px;right:16px;font-family:'IBM Plex Mono',monospace;
+  font-size:8.5px;letter-spacing:.16em;color:var(--ambar);
+  border:1px solid rgba(232,163,61,.4);padding:4px 9px;border-radius:2px}
+
+/* ── charla guionada ──────────────────────────────────────── */
+#charla{max-width:660px;margin:0 auto;padding:0 22px 8px;min-height:130px}
+.msg{margin-bottom:13px;font-size:14.5px;line-height:1.55;opacity:0;
+  animation:entra .5s forwards}
+@keyframes entra{to{opacity:1}}
+.msg .q{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;
+  color:var(--tenue);display:block;margin-bottom:3px}
+.msg.j .q{color:var(--cian)}
+.msg.j{color:var(--cian2)}
+
+/* ── modos ────────────────────────────────────────────────── */
+#modos{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+  max-width:660px;margin:22px auto 0;padding:0 22px}
+.modo{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.13em;
+  padding:5px 11px;border:1px solid var(--linea);border-radius:2px;
+  color:var(--tenue);cursor:pointer;transition:.15s;background:rgba(4,10,18,.6)}
+.modo:hover{border-color:var(--cian);color:var(--cian2)}
+.modo.on{border-color:var(--cian);background:var(--cian);color:#04141B;font-weight:600}
+
+/* ── lo que hace ──────────────────────────────────────────── */
+#quehace{max-width:900px;margin:70px auto 0;padding:0 22px}
+h2{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.24em;
+  color:var(--cian);font-weight:500;margin:0 0 22px;text-align:center}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.carta{background:var(--panel2);border:1px solid var(--linea);border-radius:4px;
+  padding:17px 19px}
+.carta h3{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;
+  color:var(--cian2);margin:0 0 8px;font-weight:500}
+.carta p{margin:0;font-size:13px;color:var(--tenue);line-height:1.6}
+
+#nota{max-width:900px;margin:46px auto 0;padding:16px 20px;
+  border-left:2px solid var(--ambar);background:rgba(232,163,61,.06);
+  font-size:13px;color:#E9C58B;line-height:1.65}
+#nota b{color:var(--ambar)}
+footer{text-align:center;color:var(--tenue);font-size:10px;letter-spacing:.16em;
+  font-family:'IBM Plex Mono',monospace;padding:52px 20px 40px}
+@media (max-width:520px){ #escena{height:64vh} }
+</style>
+</head>
+<body>
+
+<div id="escena">
+  <div class="aviso-demo">DEMOSTRACIÓN</div>
+  <div id="cajaLienzo">
+    <canvas id="lienzo"></canvas>
+    <div id="marcaTop">
+      <div class="n">J.A.R.V.I.S.</div>
+      <div class="s">ASISTENTE DE ESCRITORIO</div>
+    </div>
+    <div id="estado">EN ESPERA</div>
+  </div>
+</div>
+
+<div id="charla"></div>
+
+<div id="modos">
+  <div class="modo on" data-m="normal">◎ Normal</div>
+  <div class="modo" data-m="serio">▪ Serio</div>
+  <div class="modo" data-m="bromista">◕ Bromista</div>
+  <div class="modo" data-m="sarcastico">◑ Sarcástico</div>
+  <div class="modo" data-m="contador">▤ Contador</div>
+  <div class="modo" data-m="operativo">◈ Operativo</div>
+  <div class="modo" data-m="programador">‹› Programador</div>
+</div>
+
+<div id="quehace">
+  <h2>QUÉ HACE LA VERSIÓN COMPLETA</h2>
+  <div class="rejilla">
+    <div class="carta"><h3>PRESENTA TABLEROS</h3>
+      <p>Abre un tablero, lo recorre sección por sección y va explicando cada
+         una en voz alta, con un puntero que señala de qué está hablando.</p></div>
+    <div class="carta"><h3>DESPIERTA CON APLAUSOS</h3>
+      <p>Escucha en segundo plano sin ninguna ventana a la vista. Dos palmadas
+         y una frase, y da el informe del día.</p></div>
+    <div class="carta"><h3>INFORME DIARIO</h3>
+      <p>Archivos sin tocar, descargas recientes, pendientes anotados, estado
+         del equipo y correo sin leer.</p></div>
+    <div class="carta"><h3>MÚSICA</h3>
+      <p>Busca una canción y la reproduce, con pausa y volumen por voz. La
+         música se baja sola mientras habla.</p></div>
+    <div class="carta"><h3>MEMORIA</h3>
+      <p>Recuerda entre sesiones lo que se le pide guardar, y siete modos de
+         carácter que cambian cómo trabaja, no solo cómo habla.</p></div>
+    <div class="carta"><h3>MODO GRATIS</h3>
+      <p>Resuelve las órdenes comunes leyendo el disco, sin llamar a ninguna
+         API de pago. Cuando algo exige razonar, lo dice en vez de inventar.</p></div>
+  </div>
+
+  <div id="nota">
+    <b>Esto es solo la interfaz.</b> La versión completa es un programa de Python
+    que corre en la computadora del usuario: es quien lee los archivos, abre los
+    tableros, habla y guarda la memoria. Esa parte no puede vivir en una página
+    web — necesitaría exponer las claves de API y no tendría acceso al disco.
+    Aquí la conversación es un guion y el núcleo es el mismo código, nada más.
+  </div>
+</div>
+
+<footer>J.A.R.V.I.S. · demostración de interfaz</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+// El núcleo necesita estas señales; en la versión completa vienen del micrófono
+// y de la conversación. Aquí se simulan para que respire igual.
+// El bloque del nucleo ya declara 'empuje', 'ultimoCuadro' y la funcion
+// nivelAudio(). Declarar cualquiera de ellas otra vez lanza un SyntaxError que
+// tumba todo el script y deja el lienzo en blanco. Aqui van SOLO las que el
+// bloque usa pero no crea.
+let escuchando = false, hablando = false;
+
+// Intensidad de la voz, de 0 a 1. La mueve el guion de la demostracion.
+let intensidad = 0;
+
+// Un analizador de mentira. El nucleo lee de aqui igual que leeria del
+// microfono, asi que reacciona exactamente igual sin tocar su codigo.
+const analizador = {
+  frequencyBinCount: 64,
+  getByteFrequencyData(d){
+    const t = performance.now() / 120;
+    for (let i = 0; i < d.length; i++){
+      const caida = 1 - i / d.length;                 // los graves pesan mas
+      const onda = 0.55 + 0.45 * Math.abs(Math.sin(t + i * 0.35));
+      d[i] = Math.max(0, Math.min(255, intensidad * 255 * caida * onda));
+    }
+  }
+};
+</script>
+<script>
+const LI = $('lienzo'), CX = LI.getContext('2d');
+let picoMax = 0, intercambios = 0, ultimaLatencia = null, t0Sesion = Date.now();
+let empuje = 0;                       // sube al pulsar, baja solo
+
+// ── esfera de circuito ────────────────────────────────────────
+// La clave del look de la referencia son dos cosas:
+//  1. densidad: miles de trazos CORTOS en ángulo recto sobre la superficie,
+//     no una malla de líneas largas;
+//  2. borde encendido: donde la esfera se ve de canto se atraviesa más
+//     material, así que ahí brilla mucho más que en el centro.
+const NPT = 1650;
+const PT = [], ARCOS = [], RETICULA = [];
+(function(){
+  const phi = Math.PI*(3-Math.sqrt(5));
+  for(let i=0;i<NPT;i++){
+    const y = 1-(i/(NPT-1))*2, rad = Math.sqrt(Math.max(0,1-y*y)), th = i*phi;
+    const p = {x:Math.cos(th)*rad, y:y, z:Math.sin(th)*rad};
+    // tangentes locales: dan las direcciones "recta" del circuito
+    let nx=-p.x*p.y, ny=1-p.y*p.y, nz=-p.z*p.y;
+    const nl=Math.hypot(nx,ny,nz)||1; nx/=nl; ny/=nl; nz/=nl;
+    const ex=ny*p.z-nz*p.y, ey=nz*p.x-nx*p.z, ez=nx*p.y-ny*p.x;
+    PT.push({...p, nx,ny,nz, ex,ey,ez,
+      l1: 0.035+Math.random()*0.115,          // largo del trazo
+      l2: Math.random()<0.42 ? 0.03+Math.random()*0.09 : 0,  // codo en L
+      d1: Math.random()<0.5?1:-1, d2: Math.random()<0.5?1:-1,
+      eje: Math.random()<0.5,                  // sigue meridiano o paralelo
+      luz: Math.random(),                      // si es punto brillante
+      rib: Math.random()<0.44,                 // costilla radial
+      b:   Math.random(),                      // banda de audio
+      cen: Math.random()<0.14,                 // trazo hacia el centro
+      pla: Math.random()<0.17 ? 0.018+Math.random()*0.032 : 0});  // placa
+  }
+  // Retícula de globo: es lo que hace que el ojo lo lea como ESFERA y no
+  // como una textura plana. Sin meridianos y paralelos se pierde el volumen.
+  for(let m=0;m<16;m++){                       // meridianos (polo a polo)
+    const lon=m/16*Math.PI*2, pts=[];
+    for(let s=0;s<=40;s++){
+      const lat=-Math.PI/2 + s/40*Math.PI;
+      pts.push([Math.cos(lat)*Math.cos(lon), Math.sin(lat), Math.cos(lat)*Math.sin(lon)]);
+    }
+    RETICULA.push({pts, grosor:0.9, tipo:'m'});
+  }
+  for(let a=1;a<10;a++){                        // paralelos (anillos)
+    const lat=-Math.PI/2 + a/10*Math.PI, r=Math.cos(lat), y=Math.sin(lat), pts=[];
+    for(let s=0;s<=48;s++){
+      const th=s/48*Math.PI*2;
+      pts.push([Math.cos(th)*r, y, Math.sin(th)*r]);
+    }
+    RETICULA.push({pts, grosor: (a===5?1.5:0.85), tipo:'p'});
+  }
+  for(let k=0;k<5;k++) ARCOS.push({incl:Math.random()*3.14, vel:0.15+Math.random()*0.5,
+    r:0.72+Math.random()*0.5, ancho:1+Math.random()*2.2, fase:Math.random()*6.3});
+})();
+
+function ajustarLienzo(){
+  // Se mide el CONTENEDOR, no el lienzo: el lienzo es absoluto y al arrancar
+  // todavia no tiene medidas propias, y quedaba en 1x1 para siempre.
+  const cont = LI.parentElement;
+  const r = cont.getBoundingClientRect(), d = window.devicePixelRatio||1;
+  if(r.width < 2 || r.height < 2) return false;
+  LI.width = Math.round(r.width*d);
+  LI.height = Math.round(r.height*d);
+  LI.style.width = r.width+'px';
+  LI.style.height = r.height+'px';
+  CX.setTransform(d,0,0,d,0,0);
+  return true;
+}
+addEventListener('resize', ajustarLienzo);
+
+function nivelAudio(){
+  if(!analizador) return null;
+  const d = new Uint8Array(analizador.frequencyBinCount);
+  analizador.getByteFrequencyData(d);
+  return d;
+}
+
+let giroN = 0, ultimoCuadro = 0;
+function pintarNucleo(){
+  requestAnimationFrame(pintarNucleo);
+  ultimoCuadro = performance.now();
+  const cont = LI.parentElement.getBoundingClientRect();
+  if(cont.width < 2) return;
+  const dpr = devicePixelRatio||1;
+  if(Math.abs(LI.width-Math.round(cont.width*dpr))>2 ||
+     Math.abs(LI.height-Math.round(cont.height*dpr))>2){ if(!ajustarLienzo()) return; }
+
+  const W=cont.width, H=cont.height, cx=W/2, cy=H*0.46;
+  const R=Math.min(W*0.30, H*0.46);
+  const datos=nivelAudio(), t=performance.now()/1000;
+  giroN += 0.0019 + empuje*0.005;
+  empuje *= 0.945;
+  let energia=0;
+  if(datos){ let s=0; for(let i=0;i<24;i++) s+=datos[i]; energia=s/(24*255); }
+  const vivo = escuchando||hablando;
+  const pulso = vivo ? energia : (0.07+Math.sin(t*1.4)*0.028);
+  if(energia>picoMax) picoMax=energia;
+
+  const ca=Math.cos(giroN), sa=Math.sin(giroN);
+  const incl=0.30+Math.sin(t*0.19)*0.13, cb=Math.cos(incl), sb=Math.sin(incl);
+  const CAM=3.0;
+  // rota y proyecta un punto de la esfera
+  const proy=(x,y,z,esc)=>{
+    const x1=x*ca-z*sa, z1=x*sa+z*ca;
+    const y2=y*cb-z1*sb, z2=y*sb+z1*cb;
+    const k=CAM/(CAM+z2*esc);
+    return [cx+x1*esc*R*k, cy+y2*esc*R*k, z2];
+  };
+
+  CX.clearRect(0,0,W,H);
+  CX.globalCompositeOperation='lighter';
+
+  // resplandor de fondo
+  const halo=CX.createRadialGradient(cx,cy,R*0.2,cx,cy,R*1.85);
+  halo.addColorStop(0,`rgba(255,120,20,${0.10+pulso*0.16})`);
+  halo.addColorStop(0.62,`rgba(255,90,10,${0.05+pulso*0.07})`);
+  halo.addColorStop(1,'rgba(0,0,0,0)');
+  CX.fillStyle=halo; CX.beginPath(); CX.arc(cx,cy,R*1.85,0,7); CX.fill();
+
+  // retícula de globo: se dibuja por tramos para que lo de atrás se vea
+  // más tenue que lo de adelante — sin eso parece un dibujo plano.
+  for(const g of RETICULA){
+    let ant=null;
+    for(const [X,Y,Z] of g.pts){
+      const x1=X*ca-Z*sa, z1=X*sa+Z*ca;
+      const y2=Y*cb-z1*sb, z2=Y*sb+z1*cb;
+      const k=CAM/(CAM+z2);
+      const px=cx+x1*R*k, py=cy+y2*R*k;
+      if(ant){
+        const canto=1-Math.abs(z2), frente=z2<0?1:0.34;
+        const op=(0.05+Math.pow(canto,1.7)*0.42)*frente*(0.7+pulso*0.6);
+        if(op>0.012){
+          CX.lineWidth=g.grosor*(0.55+canto*0.75);
+          CX.strokeStyle=`rgba(255,${150+canto*80},${45+canto*70},${op})`;
+          CX.beginPath(); CX.moveTo(ant[0],ant[1]); CX.lineTo(px,py); CX.stroke();
+        }
+      }
+      ant=[px,py];
+    }
+  }
+
+  // los trazos se agrupan por brillo y se pintan de golpe: 1150 puntos por
+  // cuadro serían miles de llamadas sueltas y el navegador se arrastraría.
+  const NB=6, rutas=[]; for(let i=0;i<NB;i++) rutas.push(new Path2D());
+  const ribs=[]; for(let i=0;i<NB;i++) ribs.push(new Path2D());
+  const luces=[];
+
+  for(let i=0;i<NPT;i++){
+    const p=PT[i];
+    const [sx,sy,z]=proy(p.x,p.y,p.z,1);
+    // borde encendido: |z| chico = se ve de canto = brilla
+    const canto=1-Math.abs(z);
+    const frente=z<0 ? 1 : 0.58;                 // lo de atrás, más tenue
+    const banda=datos ? datos[Math.floor(p.b*datos.length*0.5)]/255 : 0;
+    const alt=datos?banda:(Math.sin(t*1.6+i*0.21)*0.5+0.5)*0.25;
+    let br=(0.16+Math.pow(canto,2.0)*1.85)*frente*(0.72+alt*0.55+pulso*0.45);
+    if(br<0.035) continue;
+    const bi=Math.min(NB-1,(br*NB)|0);
+
+    // trazo principal sobre la superficie, en ángulo recto
+    const L=p.l1*(1+alt*0.5);
+    const ux=p.eje?p.ex:p.nx, uy=p.eje?p.ey:p.ny, uz=p.eje?p.ez:p.nz;
+    const ax=p.x+ux*L*p.d1, ay=p.y+uy*L*p.d1, az=p.z+uz*L*p.d1;
+    const [bx,by]=proy(ax,ay,az,1);
+    rutas[bi].moveTo(sx,sy); rutas[bi].lineTo(bx,by);
+
+    // codo: el quiebre en L es lo que da el aire de circuito
+    if(p.l2){
+      const vx=p.eje?p.nx:p.ex, vy=p.eje?p.ny:p.ey, vz=p.eje?p.nz:p.ez;
+      const [c2x,c2y]=proy(ax+vx*p.l2*p.d2, ay+vy*p.l2*p.d2, az+vz*p.l2*p.d2, 1);
+      rutas[bi].lineTo(c2x,c2y);
+    }
+    // placas: pequeños rectángulos sobre la superficie, como chips
+    if(p.pla && canto>0.25){
+      const vx=p.eje?p.nx:p.ex, vy=p.eje?p.ny:p.ey, vz=p.eje?p.nz:p.ez;
+      const s=p.pla, q=[];
+      for(const [su,sv] of [[0,0],[1,0],[1,1],[0,1]])
+        q.push(proy(p.x+ux*s*su*2+vx*s*sv, p.y+uy*s*su*2+vy*s*sv,
+                    p.z+uz*s*su*2+vz*s*sv, 1));
+      const rp=rutas[bi];
+      rp.moveTo(q[0][0],q[0][1]);
+      for(let n=1;n<4;n++) rp.lineTo(q[n][0],q[n][1]);
+      rp.closePath();
+    }
+    // costillas radiales: salen hacia afuera, sobre todo en el borde
+    if(p.rib && canto>0.60){
+      const [rx,ry]=proy(p.x,p.y,p.z, 1+0.06+alt*0.20+empuje*0.07);
+      ribs[bi].moveTo(sx,sy); ribs[bi].lineTo(rx,ry);
+    }
+    // algunos trazos apuntan al centro
+    if(p.cen && canto>0.3){
+      const [ix,iy]=proy(p.x,p.y,p.z, 0.80);
+      rutas[Math.max(0,bi-2)].moveTo(sx,sy); rutas[Math.max(0,bi-2)].lineTo(ix,iy);
+    }
+    if(p.luz>0.74 && br>0.30) luces.push([sx,sy,br,alt]);
+  }
+
+  for(let i=0;i<NB;i++){
+    const f=(i+1)/NB;
+    CX.lineWidth=0.5+f*0.75;
+    CX.strokeStyle=`rgba(255,${105+f*130},${14+f*88},${0.13+f*0.85})`;
+    CX.stroke(rutas[i]);
+    CX.lineWidth=0.45+f*0.6;
+    CX.strokeStyle=`rgba(255,${150+f*90},${35+f*60},${0.16+f*0.66})`;
+    CX.stroke(ribs[i]);
+  }
+
+  // puntos de luz
+  for(const [x,y,br,alt] of luces){
+    const r=0.7+br*1.7+alt*1.1;
+    CX.beginPath(); CX.arc(x,y,r,0,7);
+    CX.fillStyle=`rgba(255,${235+br*20},${180+br*60},${0.45+br*0.55})`; CX.fill();
+  }
+
+  // arcos grandes que cruzan la esfera
+  ARCOS.forEach((a,ix)=>{
+    const g=giroN*a.vel+a.fase, cg=Math.cos(g), sg=Math.sin(g);
+    const ci=Math.cos(a.incl), si=Math.sin(a.incl);
+    CX.beginPath();
+    for(let s=0;s<=64;s++){
+      const th=s/64*Math.PI*2;
+      let X=Math.cos(th)*a.r, Y=Math.sin(th)*a.r*ci, Z=Math.sin(th)*a.r*si;
+      const X2=X*cg-Z*sg, Z2=X*sg+Z*cg;
+      const [px,py]=proy(X2,Y,Z2,1);
+      s?CX.lineTo(px,py):CX.moveTo(px,py);
+    }
+    CX.lineWidth=a.ancho*(0.6+pulso*0.5);
+    CX.strokeStyle=`rgba(255,${180+ix*14},${70+ix*18},${0.14+pulso*0.2})`;
+    CX.stroke();
+  });
+
+  // arco frontal grueso: el trazo que cruza la esfera en la referencia
+  {
+    const g2=giroN*0.32, cg=Math.cos(g2), sg=Math.sin(g2);
+    const ci=Math.cos(0.95), si=Math.sin(0.95);
+    CX.beginPath();
+    for(let s=0;s<=80;s++){
+      const th=-0.5+s/80*3.5;
+      let X=Math.cos(th)*0.98, Y=Math.sin(th)*0.98*ci, Z=Math.sin(th)*0.98*si;
+      const X2=X*cg-Z*sg, Z2=X*sg+Z*cg;
+      const [px,py]=proy(X2,Y,Z2,1);
+      s?CX.lineTo(px,py):CX.moveTo(px,py);
+    }
+    CX.lineWidth=2.6+pulso*2.2;
+    CX.strokeStyle=`rgba(255,205,110,${0.30+pulso*0.28})`;
+    CX.stroke();
+  }
+
+  // brasa central, contenida: la protagonista es la superficie
+  const nr=R*(0.07+pulso*0.07+empuje*0.04);
+  const g=CX.createRadialGradient(cx,cy,0,cx,cy,nr*4.2);
+  g.addColorStop(0,'rgba(255,250,230,0.55)');
+  g.addColorStop(0.14,`rgba(255,200,100,${0.24+pulso*0.20})`);
+  g.addColorStop(0.48,`rgba(255,130,25,${0.13+pulso*0.13})`);
+  g.addColorStop(1,'rgba(150,50,3,0)');
+  CX.fillStyle=g; CX.beginPath(); CX.arc(cx,cy,nr*4.2,0,7); CX.fill();
+
+  CX.globalCompositeOperation='source-over';
+}
+
+// arranque del nucleo
+ajustarLienzo(); pintarNucleo();
+addEventListener('resize', () => { ajustarLienzo(); });
+// red de seguridad: si el navegador congela la animacion al
+// ocultar la pestana, al volver se repinta.
+addEventListener('visibilitychange', () => {
+  if(document.visibilityState==='visible'){ ajustarLienzo(); pintarNucleo(); }
+});
+
+</script>
+<script>
+// ── guion de la demostración ────────────────────────────────────────────
+const GUION = [
+  {q:'Tú',     t:'JARVIS, ¿estás despierto?', esperar:1100},
+  {q:'JARVIS', t:'Para usted siempre, señor.', esperar:1500},
+  {q:'JARVIS', t:'Tiene 4 archivos sin tocar hace más de dos semanas. El más olvidado lleva 62 días.', esperar:2600},
+  {q:'JARVIS', t:'Tres correos sin leer, ninguno urgente. Y dos pendientes anotados.', esperar:2600},
+  {q:'Tú',     t:'Preséntame el tablero de inventario.', esperar:1400},
+  {q:'JARVIS', t:'Con gusto. Empecemos por el resumen general.', esperar:2200},
+  {q:'JARVIS', t:'Esta parte es la diferencia por fecha. Y aquí, el costo del descuadre.', esperar:2800},
+  {q:'Tú',     t:'Pon algo de música.', esperar:1300},
+  {q:'JARVIS', t:'Enseguida. La bajo cuando le hable.', esperar:2600},
+];
+
+const charla = $('charla'), estado = $('estado');
+let paso = 0;
+
+function escribir(quien, texto){
+  const d = document.createElement('div');
+  d.className = 'msg' + (quien === 'JARVIS' ? ' j' : '');
+  const s = document.createElement('span');
+  s.className = 'q'; s.textContent = quien;
+  d.appendChild(s);
+  d.appendChild(document.createTextNode(texto));
+  charla.appendChild(d);
+  while (charla.children.length > 4) charla.removeChild(charla.firstChild);
+}
+
+function siguiente(){
+  const p = GUION[paso % GUION.length];
+  paso++;
+
+  if (p.q === 'Tú'){
+    escuchando = true; hablando = false;
+    estado.textContent = 'ESCUCHANDO'; estado.classList.add('vivo');
+    empuje = Math.max(empuje, 0.9);
+  } else {
+    escuchando = false; hablando = true;
+    estado.textContent = 'RESPONDIENDO'; estado.classList.add('vivo');
+    empuje = Math.max(empuje, 1.3);
+  }
+  escribir(p.q, p.t);
+
+  // la voz hace que el núcleo vibre: se imita con ruido suave
+  const hasta = performance.now() + p.esperar;
+  (function latir(){
+    if (performance.now() > hasta){
+      escuchando = false; hablando = false;
+      estado.textContent = 'EN ESPERA'; estado.classList.remove('vivo');
+      intensidad = 0;
+      setTimeout(siguiente, 900);
+      return;
+    }
+    intensidad = 0.30 + Math.abs(Math.sin(performance.now()/150)) * 0.55;
+    requestAnimationFrame(latir);
+  })();
+}
+setTimeout(siguiente, 1400);
+
+// los modos solo cambian de aspecto: aquí no hay nada detrás
+document.querySelectorAll('.modo').forEach(m => {
+  m.onclick = () => {
+    document.querySelectorAll('.modo').forEach(x => x.classList.remove('on'));
+    m.classList.add('on');
+    empuje = Math.max(empuje, 1);
+  };
+});
+</script>
+</body>
+</html>
