@@ -1,0 +1,19 @@
+{
+  "name": "plan-build",
+  "version": "0.1.0",
+  "description": "Un agente planifica y otro construye, y se pueden hablar entre si. Tambien manda mensajes a otras sesiones.",
+  "userConfig": {
+    "plannerModel": {
+      "type": "string",
+      "title": "Modelo del planificador",
+      "description": "Alias o id; inherit usa el de la sesion",
+      "default": "inherit"
+    },
+    "builderModel": {
+      "type": "string",
+      "title": "Modelo del constructor",
+      "description": "Alias o id; inherit usa el de la sesion",
+      "default": "inherit"
+    }
+  }
+}

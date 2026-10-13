@@ -1,0 +1,13 @@
+{
+  "name": "model-router",
+  "version": "0.1.0",
+  "description": "Manda las tareas ligeras de los subagentes a un modelo barato y deja las pesadas en el modelo principal.",
+  "userConfig": {
+    "lightModel": {
+      "type": "string",
+      "title": "Modelo barato",
+      "description": "Modelo para tareas ligeras (alias o id)",
+      "default": "haiku"
+    }
+  }
+}

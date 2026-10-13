@@ -1,0 +1,9 @@
+{
+  "name": "jarvis-mods",
+  "owner": { "name": "iker-code1" },
+  "plugins": [
+    { "name": "model-router", "source": "./mods/model-router" },
+    { "name": "plan-build", "source": "./mods/plan-build" },
+    { "name": "agent-monitor", "source": "./mods/agent-monitor" }
+  ]
+}
