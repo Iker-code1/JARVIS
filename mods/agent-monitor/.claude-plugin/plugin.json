@@ -1,0 +1,6 @@
+{
+  "name": "agent-monitor",
+  "version": "0.1.0",
+  "description": "Panel en vivo con el avance de la sesion y de cada agente: estado, herramientas usadas y tiempo.",
+  "types": "./types/index.d.ts"
+}
