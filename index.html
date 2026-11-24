@@ -241,8 +241,13 @@ function nivelAudio(){
 }
 
 let giroN = 0, ultimoCuadro = 0;
+// Id del cuadro pendiente. Al volver a la pestana se llama otra vez a
+// pintarNucleo(); sin cancelar el cuadro anterior quedaban dos (o mas) bucles
+// pintando a la vez y la CPU crecia con cada regreso. Asi solo vive uno.
+let idCuadro = 0;
 function pintarNucleo(){
-  requestAnimationFrame(pintarNucleo);
+  cancelAnimationFrame(idCuadro);
+  idCuadro = requestAnimationFrame(pintarNucleo);
   ultimoCuadro = performance.now();
   const cont = LI.parentElement.getBoundingClientRect();
   if(cont.width < 2) return;
